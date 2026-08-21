@@ -179,6 +179,13 @@ worker serves the app shell cache-first, so without a version bump installed
 clients keep running the old code indefinitely. This is the single easiest
 thing to forget and the most confusing to debug.
 
+One quirk to expect when testing a fresh deploy in a plain browser tab: Pages
+serves assets with `Cache-Control: max-age=600`, so for up to ten minutes a
+reload can pair newly-fetched HTML with a still-cached `app.js` and the app will
+look half-updated — new markup, old behaviour. Hard-reload to confirm before
+chasing it as a bug. Installed users are not affected: the service worker serves
+the whole shell from one versioned cache, so they never get a mixed set.
+
 ### Hosting it elsewhere
 
 `app/` is the entire deployable artifact — plain static files, no server-side
