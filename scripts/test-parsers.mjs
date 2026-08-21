@@ -200,12 +200,15 @@ check("Bare IP host is flagged",
   qr("https://192.168.1.50/scan"),
   { warns: ["bare IP address"] });
 
+// The escaped semicolon is the point of this case: an unescaped split would
+// truncate the password at the backslash. Values are deliberately obvious
+// placeholders so nothing here resembles a real network credential.
 check("Wi-Fi payload with an escaped semicolon in the password",
-  qr("WIFI:T:WPA;S:PCG-Field;P:corn\\;2026;H:true;;"),
+  qr("WIFI:T:WPA;S:EXAMPLE-SSID;P:placeholder\\;value;H:true;;"),
   { kind: "Wi-Fi network", has: [
-    ["Network name (SSID)", "PCG-Field"],
+    ["Network name (SSID)", "EXAMPLE-SSID"],
     ["Security", "WPA/WPA2"],
-    ["Password", "corn;2026"],
+    ["Password", "placeholder;value"],
     ["Hidden network", "Yes"],
   ]});
 
