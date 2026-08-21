@@ -34,6 +34,9 @@ const TARGETS = [
   ["stats button", ".icon-btn"],
   ["viewfinder text", ".stage-idle"],
   ["link", ".field-link"],
+  ["row label", ".row-label"],
+  ["theme seg (idle)", ".segmented input:not(:checked) + label"],
+  ["theme seg (active)", ".segmented input:checked + label"],
 ];
 
 const channel = (c) => {
@@ -136,6 +139,39 @@ export function measure() {
   }
   const scheme = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
   return { scheme, pass: rows.every((r) => r.ok !== false), rows };
+}
+
+/**
+ * Audits both palettes back to back by driving `data-theme` directly, so both
+ * can be checked without changing the OS setting. Restores the original theme.
+ */
+export async function auditBoth() {
+  await seed();
+  const original = document.documentElement.dataset.theme;
+  const results = [];
+  for (const theme of ["light", "dark"]) {
+    document.documentElement.dataset.theme = theme;
+    const r = measure();
+    // measure() reads the media query for its label; override with the forced value.
+    results.push({ ...r, scheme: theme });
+  }
+  document.documentElement.dataset.theme = original;
+  for (const r of results) {
+    const failures = r.rows.filter((x) => x.ok === false);
+    console.log(
+      `%c${r.scheme.toUpperCase()} — ${failures.length ? `${failures.length} FAILING` : "all pass"}`,
+      `font-weight:bold;color:${failures.length ? "crimson" : "green"}`,
+    );
+    console.table(
+      r.rows.map((x) => ({
+        component: x.name,
+        ratio: x.ratio ?? "—",
+        required: x.need ?? "—",
+        verdict: x.ok === null ? "absent" : x.ok ? "pass" : "FAIL",
+      })),
+    );
+  }
+  return results;
 }
 
 /** Seeds the page, measures, and prints a table. */

@@ -12,14 +12,19 @@
     <link rel="manifest" href="./manifest.webmanifest" />
 
     <!--
-      The app follows the system colour scheme (see css/app.css). These two
-      theme-color tags let the browser/OS chrome follow it as well; a single
-      tag would leave one theme with a mismatched status bar. `color-scheme`
-      keeps native form controls and scrollbars in step before CSS loads.
+      theme-color is managed by js/theme.js (and the inline script below) rather
+      than by media-scoped tags, because an explicit light/dark choice has to be
+      able to override the phone's setting — which a media query cannot express.
     -->
     <meta name="color-scheme" content="light dark" />
-    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#0b120e" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#ffffff" />
+
+    <!--
+      Classic (non-deferred) script, so the theme is applied before first paint
+      and nobody whose choice differs from their phone setting sees a flash of
+      the wrong theme. Must stay above the stylesheet link.
+    -->
+    <script src="./js/theme-init.js"></script>
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <!--
@@ -113,6 +118,47 @@
       </div>
 
       <div class="tuning">
+        <div class="control-row">
+          <!-- A span, not a <label>: it names the whole group via
+               aria-labelledby, and a <label for> here would make tapping the
+               word "Theme" silently select Auto. -->
+          <span class="row-label" id="theme-label">Theme</span>
+          <!--
+            Real radio inputs rather than buttons with aria-pressed: the browser
+            then provides exclusive selection, arrow-key navigation and correct
+            screen-reader semantics without custom keyboard handling.
+          -->
+          <div class="segmented" role="radiogroup" aria-labelledby="theme-label">
+            <input
+              class="visually-hidden"
+              type="radio"
+              name="theme"
+              id="theme-auto"
+              value="auto"
+            />
+            <label for="theme-auto" title="Follow the phone's own light/dark setting">
+              Auto
+            </label>
+            <input
+              class="visually-hidden"
+              type="radio"
+              name="theme"
+              id="theme-light"
+              value="light"
+            />
+            <label for="theme-light" title="Always light — easier to read in direct sunlight">
+              Light
+            </label>
+            <input
+              class="visually-hidden"
+              type="radio"
+              name="theme"
+              id="theme-dark"
+              value="dark"
+            />
+            <label for="theme-dark" title="Always dark — less glare in low light">Dark</label>
+          </div>
+        </div>
         <div class="control-row" id="camera-row" hidden>
           <label for="camera-select">Camera</label>
           <select id="camera-select"></select>

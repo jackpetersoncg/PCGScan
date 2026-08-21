@@ -96,11 +96,35 @@ not, and iOS is strict about this. Options:
 
 ### Theming
 
-The app follows the phone's light/dark setting automatically via
-`prefers-color-scheme` — there is no in-app toggle. Every colour in
-[`app/css/app.css`](app/css/app.css) is a semantic token (`--text`, `--accent`,
-`--warn-bg`); the brand hexes are raw ingredients that only the token layer
-consumes. To retheme, change the tokens, not the rules.
+A **Theme** row in the app offers *Auto / Light / Dark*. Auto follows the
+phone's setting and tracks changes to it live; an explicit choice overrides the
+phone in both directions and persists in `localStorage`. The override exists
+because the right theme outdoors is a lighting question, not a system-settings
+question — direct sun favours light regardless of what the phone says.
+
+Every colour in [`app/css/app.css`](app/css/app.css) is a semantic token
+(`--text`, `--accent`, `--warn-bg`); the brand hexes are raw ingredients that
+only the token layer consumes. To retheme, change the tokens, not the rules.
+
+The theme is keyed off `<html data-theme>`, set to a concrete `light` or `dark`.
+It is deliberately **not** a `prefers-color-scheme` media query: supporting an
+explicit override through a media query needs the dark palette written twice
+(once for `@media dark`, again for `[data-theme="dark"]`), and two copies of a
+palette drift apart. Resolving the system preference in JS keeps one definition
+per token.
+
+That resolution happens in two places, which is intentional:
+
+- [`js/theme-init.js`](app/js/theme-init.js) — a *classic* script in `<head>`,
+  so it runs before first paint and nobody sees a flash of the wrong theme.
+  Module scripts are deferred and would be too late. Shared with the self-test
+  page so that themes correctly too.
+- [`js/theme.js`](app/js/theme.js) — the module handling the switch,
+  persistence, and the `matchMedia` listener that keeps Auto current.
+
+Keep the storage key and the two `theme-color` values in step across both.
+The switch is initialised before the camera and engine guards in `app.js`, so it
+still works when the app cannot scan at all.
 
 **The viewfinder is deliberately exempt.** `--stage-*` and `--scrim` stay dark
 in both themes, because that surface is live camera video rather than UI: a
@@ -112,12 +136,13 @@ Contrast is verified, not eyeballed. After changing any token, run the audit in
 **both** schemes:
 
 ```js
-const { audit } = await import('./dev/contrast-audit.js'); await audit();
+const { auditBoth } = await import('./dev/contrast-audit.js'); await auditBoth();
 ```
 
 It measures the *rendered* ratio of every themed component against its
-effective background and prints a pass/fail table. All 20 components currently
-pass WCAG AA in both schemes. Worth knowing: the warm grays straight off the
+effective background and prints a pass/fail table for both palettes, driving
+`data-theme` itself so you do not have to touch the OS setting. All 23
+components currently pass WCAG AA in both. Worth knowing: the warm grays straight off the
 brand sheet (Warm Gray 8 `#8D827A`) fail at 4.05:1 on white, and PCG orange
 fails badly as text at 2.4:1 — which is why muted text is darkened from the
 brand value and light-mode warnings use dark text on a pale orange tint,
@@ -251,12 +276,13 @@ and decoded links are never auto-navigated.
   Fonts, so offline use falls back to the system stack. Self-host WOFF2 files if
   brand-exact type offline matters.
 - **The install splash screen is always dark.** A web manifest has no
-  per-scheme form of `background_color`, so light-mode users get a brief dark
-  splash before the app paints. Dark was chosen over white because the green
-  icon reads better on it, and a white flash at night is more jarring than a
-  dark one in daylight. iOS's `apple-mobile-web-app-status-bar-style` has the
-  same limitation, which is why it is set to `default` and the status bar is
-  tinted from the two `theme-color` tags instead.
+  per-scheme form of `background_color`, and it cannot see the in-app theme
+  choice at all, so light-theme users get a brief dark splash before the app
+  paints. Dark was chosen over white because the green icon reads better on it,
+  and a white flash at night is more jarring than a dark one in daylight. iOS's
+  `apple-mobile-web-app-status-bar-style` has the same limitation, which is why
+  it is set to `default` and the status bar is tinted from a `theme-color` tag
+  that `theme.js` keeps current instead.
 - **The GS1 AI table is a working subset**, covering trade and logistics
   identifiers rather than all ~450 AIs. Unrecognised AIs are reported as such,
   not silently dropped. Extend the table in `gs1.js`.

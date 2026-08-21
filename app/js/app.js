@@ -4,6 +4,7 @@ import { Scanner } from "./scanner.js";
 import { warmUp, decodeStill } from "./decode.js";
 import { parse } from "./parsers/index.js";
 import { renderResult, renderMultiple } from "./render.js";
+import { initTheme } from "./theme.js";
 
 const $ = (id) => document.getElementById(id);
 
@@ -24,6 +25,7 @@ const ui = {
   zoomRow: $("zoom-row"),
   diag: $("diagnostics"),
   diagToggle: $("btn-diag"),
+  theme: document.querySelector(".segmented[role='radiogroup']"),
 };
 
 let scanner = null;
@@ -207,6 +209,11 @@ function wireControls() {
 }
 
 async function main() {
+  // Before the guards below: the theme switch must stay usable even when the
+  // app cannot scan (insecure context, engine failed to load), or the user is
+  // stuck with an error message they may not be able to read comfortably.
+  initTheme(ui.theme);
+
   if (!window.isSecureContext) {
     setStatus(
       "Camera access needs a secure context. Open this app over HTTPS (or on " +

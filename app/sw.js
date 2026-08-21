@@ -6,8 +6,8 @@
 //
 // Bump CACHE on every deploy. Without that, clients keep serving the old shell.
 
-// v2: light/dark theming (css/app.css token layer, index.html theme-color tags)
-const CACHE = "pcg-scan-v2";
+// v3: auto/light/dark theme switch (js/theme.js)
+const CACHE = "pcg-scan-v3";
 
 const SHELL = [
   "./",
@@ -18,6 +18,8 @@ const SHELL = [
   "./js/scanner.js",
   "./js/decode.js",
   "./js/render.js",
+  "./js/theme.js",
+  "./js/theme-init.js",
   "./js/parsers/index.js",
   "./js/parsers/gs1.js",
   "./js/parsers/aamva.js",

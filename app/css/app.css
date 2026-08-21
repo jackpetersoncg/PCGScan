@@ -6,10 +6,20 @@
     Blue #007598 · Orange #F68D2B · Warm Gray #8D827A · Warm Gray 1 #D6D1CA
 
   THEMING
-  Light is defined on bare :root and dark overrides it inside
-  prefers-color-scheme, so the app follows the phone's system setting.
+  The theme is selected by a `data-theme` attribute on <html>, set to either
+  "light" or "dark". js/theme.js resolves the user's auto/light/dark preference
+  to one of those two concrete values and writes the attribute; an inline script
+  in index.html does the same before first paint so there is no flash of the
+  wrong theme.
 
-  Two rules make this work:
+  This is deliberately NOT driven by a prefers-color-scheme media query. With a
+  media query, supporting an explicit override needs the dark palette written
+  twice (once for `@media dark` and again for `[data-theme="dark"]`), and two
+  copies of a palette drift. Resolving the system preference in JS keeps one
+  definition per token. The app is wholly JS-dependent anyway -- it is a camera
+  and a WASM decoder -- so there is no no-JS case to protect.
+
+  Two further rules make this work:
 
   1. Every colour is a semantic token (--text, --accent, --warn-bg), never a
      raw brand hex used directly in a rule. The brand hexes are the raw
@@ -27,7 +37,8 @@
   orange for the border and icon only.
 */
 
-:root {
+:root,
+:root[data-theme="light"] {
   /* Brand constants — identical in both themes. */
   --pcg-green: #028345;
   --pcg-green-dark: #2a5135;
@@ -38,9 +49,9 @@
   --pcg-gray-light: #d6d1ca;
   --pcg-red: #7f2529;
 
-  /* Tell the browser which schemes we support, so native form controls,
-     scrollbars and the text caret adapt rather than staying light. */
-  color-scheme: light dark;
+  /* Keeps native form controls, scrollbars and the caret in step with the
+     chosen theme rather than always rendering light. */
+  color-scheme: light;
 
   /* ---- light theme (default) ---- */
   --bg: #f7f6f3;
@@ -94,44 +105,45 @@
   --font-body: "Montserrat", "Segoe UI", system-ui, -apple-system, sans-serif;
 
   --radius: 12px;
+  --control-height: 44px;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #0b120e;
-    --surface: #141d17;
-    --surface-2: #1b2620;
-    --border: #2b3830;
-    --text: #eef2ef;
-    --text-dim: #a8b4ac;
-    /* Warm Gray 8 lands at 4.59:1 here — passing but with no margin, so this is
-       lifted a step for the same reason as the light theme. */
-    --text-faint: #9a8f86;
+:root[data-theme="dark"] {
+  color-scheme: dark;
 
-    /* The mid-tone green is too dark to read on a dark surface; the light tint
-       is the accent here, and vice versa in light mode. */
-    --accent: var(--pcg-green-light);
-    --accent-strong: var(--pcg-green-light);
-    --accent-ring: rgb(255 255 255 / 0.08);
+  --bg: #0b120e;
+  --surface: #141d17;
+  --surface-2: #1b2620;
+  --border: #2b3830;
+  --text: #eef2ef;
+  --text-dim: #a8b4ac;
+  /* Warm Gray 8 lands at 4.59:1 here — passing but with no margin, so this is
+     lifted a step for the same reason as the light theme. */
+  --text-faint: #9a8f86;
 
-    --btn-primary-bg: var(--pcg-green);
-    --btn-primary-fg: #ffffff;
-    --btn-primary-hover: #039b52;
+  /* The mid-tone green is too dark to read on a dark surface; the light tint
+     is the accent here, and vice versa in light mode. */
+  --accent: var(--pcg-green-light);
+  --accent-strong: var(--pcg-green-light);
+  --accent-ring: rgb(255 255 255 / 0.08);
 
-    --badge-bg: rgb(2 131 69 / 0.18);
-    --badge-border: var(--pcg-green);
-    --badge-text: var(--pcg-green-light);
+  --btn-primary-bg: var(--pcg-green);
+  --btn-primary-fg: #ffffff;
+  --btn-primary-hover: #039b52;
 
-    --warn-bg: rgb(246 141 43 / 0.12);
-    --warn-text: #ffe0bf;
-    --warn-icon-fg: #241000;
+  --badge-bg: rgb(2 131 69 / 0.18);
+  --badge-border: var(--pcg-green);
+  --badge-text: var(--pcg-green-light);
 
-    --danger: #ff8a80;
-    --danger-bg: rgb(255 138 128 / 0.12);
-    --danger-text: #ffd9d4;
+  --warn-bg: rgb(246 141 43 / 0.12);
+  --warn-text: #ffe0bf;
+  --warn-icon-fg: #241000;
 
-    --stage-border: #2b3830;
-  }
+  --danger: #ff8a80;
+  --danger-bg: rgb(255 138 128 / 0.12);
+  --danger-text: #ffd9d4;
+
+  --stage-border: #2b3830;
 }
 
 * {
@@ -414,14 +426,22 @@ main {
   color: var(--text-dim);
 }
 
-.control-row label {
+/* Direct children only — the segmented control's own labels are nested deeper
+   and must stay flexible rather than pick up this fixed width. */
+.control-row > label,
+.control-row > .row-label {
   flex: 0 0 4.5rem;
 }
 
+/* 44px is the tap-target size both platform guidelines call for. It matters
+   more than usual here: this is used outdoors, sometimes with gloves on. It
+   also keeps every row in the tuning block the same height. */
 .control-row select,
-.control-row input[type="range"] {
+.control-row input[type="range"],
+.control-row .segmented {
   flex: 1;
   min-width: 0;
+  min-height: var(--control-height);
   accent-color: var(--pcg-green);
 }
 
@@ -441,6 +461,53 @@ main {
   height: 1px;
   overflow: hidden;
   clip-path: inset(50%);
+}
+
+/* Segmented radio group (theme switch). The inputs are visually hidden and the
+   labels are the visible control, so the browser still handles selection and
+   arrow-key navigation natively. */
+.segmented {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--surface);
+}
+
+.segmented label {
+  flex: 1 1 0;
+  min-width: 0;
+  /* Centred via flex rather than padding so --control-height is exact. */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--control-height);
+  padding: 0 0.3rem;
+  text-align: center;
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--text-dim);
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.segmented label:not(:first-of-type) {
+  border-left: 1px solid var(--border);
+}
+
+.segmented input:checked + label {
+  background: var(--btn-primary-bg);
+  color: var(--btn-primary-fg);
+}
+
+/* The input is visually hidden, so the focus ring has to be drawn on the label
+   or keyboard focus becomes invisible. */
+.segmented input:focus-visible + label {
+  outline: 2px solid var(--accent);
+  outline-offset: -3px;
 }
 
 /* --------------------------------------------------------------- results -- */
