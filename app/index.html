@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>PCG Scan</title>
+    <meta
+      name="description"
+      content="Peterson Corn Genetics barcode scanner — PDF417, Data Matrix, QR Code, MaxiCode and Aztec."
+    />
+
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <meta name="theme-color" content="#028345" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="PCG Scan" />
+    <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png" />
+    <link rel="icon" href="./icons/icon-192.png" sizes="192x192" />
+
+    <!--
+      Prompt (headings) and Montserrat (body) are the PCG brand faces. They are
+      loaded from Google Fonts rather than self-hosted, so offline use falls back
+      to the system stack declared in app.css. Swap in self-hosted WOFF2 files if
+      brand-exact type offline becomes a requirement.
+    -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Prompt:wght@500;600;700&family=Montserrat:wght@400;500;600&display=swap"
+    />
+    <link rel="stylesheet" href="./css/app.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <span class="brand-text">
+          <span class="brand-pcg">PCG</span>
+          <span class="brand-app">Scan</span>
+        </span>
+      </div>
+      <button
+        id="btn-diag"
+        class="icon-btn"
+        type="button"
+        aria-pressed="false"
+        title="Show scan diagnostics"
+      >
+        Stats
+      </button>
+    </header>
+
+    <main>
+      <section class="stage" id="stage" aria-label="Camera preview">
+        <video id="preview" playsinline muted></video>
+
+        <div class="guide" id="guide" aria-hidden="true">
+          <span class="corner tl"></span>
+          <span class="corner tr"></span>
+          <span class="corner bl"></span>
+          <span class="corner br"></span>
+          <span class="sweep"></span>
+        </div>
+
+        <p class="stage-idle">
+          Reads <strong>PDF417</strong>, <strong>Data&nbsp;Matrix</strong>,
+          <strong>QR&nbsp;Code</strong>, <strong>MaxiCode</strong> and <strong>Aztec</strong>.
+        </p>
+
+        <output id="diagnostics" class="diagnostics" hidden></output>
+      </section>
+
+      <p id="status" class="status" data-tone="info" role="status" hidden></p>
+
+      <div class="controls">
+        <button id="btn-start" class="btn btn-primary" type="button">Start scanning</button>
+        <button id="btn-again" class="btn btn-primary" type="button" hidden>Scan another</button>
+        <button id="btn-photo" class="btn btn-ghost" type="button">Scan a photo</button>
+        <button
+          id="btn-torch"
+          class="btn btn-ghost"
+          type="button"
+          aria-pressed="false"
+          hidden
+        >
+          Torch
+        </button>
+        <input
+          id="file-input"
+          class="visually-hidden"
+          type="file"
+          accept="image/*"
+          capture="environment"
+        />
+      </div>
+
+      <div class="tuning">
+        <div class="control-row" id="camera-row" hidden>
+          <label for="camera-select">Camera</label>
+          <select id="camera-select"></select>
+        </div>
+        <div class="control-row" id="zoom-row" hidden>
+          <label for="zoom-input">Zoom</label>
+          <input id="zoom-input" type="range" min="1" max="4" step="0.1" value="1" />
+        </div>
+      </div>
+
+      <section id="results" class="results" aria-live="polite" hidden></section>
+    </main>
+
+    <footer class="footer">
+      <p>
+        Peterson Corn Genetics · scanning happens entirely on this device — nothing
+        is uploaded.
+      </p>
+    </footer>
+
+    <script type="module" src="./js/app.js"></script>
+  </body>
+</html>

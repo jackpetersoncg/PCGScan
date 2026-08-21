@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="plate" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#70C497"/>
+      <stop offset="0.55" stop-color="#028345"/>
+      <stop offset="1" stop-color="#2A5135"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="108" fill="url(#plate)"/>
+  <g fill="none" stroke="#FFFFFF" stroke-width="34"
+     stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 131.27679999999998 40.96000000000001 L 40.96000000000001 40.96000000000001 L 40.96000000000001 131.27679999999998" />
+    <path d="M 380.72319999999996 40.96000000000001 L 471.03999999999996 40.96000000000001 L 471.03999999999996 131.27679999999998" />
+    <path d="M 131.27679999999998 471.03999999999996 L 40.96000000000001 471.03999999999996 L 40.96000000000001 380.72319999999996" />
+    <path d="M 380.72319999999996 471.03999999999996 L 471.03999999999996 471.03999999999996 L 471.03999999999996 380.72319999999996" />
+  </g>
+  <rect x="71.56" y="241.72"
+        width="368.87999999999994" height="28.56" rx="14.28"
+        fill="#FFFFFF" opacity="0.95"/>
+</svg>

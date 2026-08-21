@@ -1,0 +1,27 @@
+{
+  "name": "pcg-scan",
+  "version": "0.1.0",
+  "description": "PCG Scan - branded PWA barcode scanner (PDF417, Data Matrix, QR, MaxiCode, Aztec)",
+  "main": "index.js",
+  "scripts": {
+    "build": "npm run build:vendor && npm run build:icons && npm run build:fixtures",
+    "build:vendor": "node scripts/build-vendor.mjs",
+    "build:icons": "node scripts/make-icons.mjs",
+    "build:fixtures": "node scripts/make-fixtures.mjs",
+    "test": "node scripts/test-parsers.mjs",
+    "verify": "node scripts/verify-decode.mjs",
+    "start": "node scripts/serve.mjs"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "dependencies": {
+    "zxing-wasm": "^3.1.3"
+  },
+  "devDependencies": {
+    "bwip-js": "^4.11.4",
+    "sharp": "^0.35.3"
+  },
+  "private": true
+}

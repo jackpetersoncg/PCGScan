@@ -1,0 +1,95 @@
+[
+  {
+    "file": "qrcode.png",
+    "title": "QR Code — plain text",
+    "text": "PCG-QR-TEST-001",
+    "expect": {
+      "format": "QRCode",
+      "kind": "Plain text"
+    },
+    "bytes": 3752
+  },
+  {
+    "file": "datamatrix.png",
+    "title": "Data Matrix — plain text",
+    "text": "PCG-DM-TEST-002",
+    "expect": {
+      "format": "DataMatrix",
+      "kind": "Plain text"
+    },
+    "bytes": 3021
+  },
+  {
+    "file": "pdf417.png",
+    "title": "PDF417 — plain text",
+    "text": "PCG-PDF417-TEST-003",
+    "expect": {
+      "format": "PDF417",
+      "kind": "Plain text"
+    },
+    "bytes": 7682
+  },
+  {
+    "file": "aztec.png",
+    "title": "Aztec — plain text",
+    "text": "PCG-AZTEC-TEST-004",
+    "expect": {
+      "format": "Aztec",
+      "kind": "Plain text"
+    },
+    "bytes": 4005
+  },
+  {
+    "file": "maxicode.png",
+    "title": "MaxiCode — mode 4 plain text",
+    "text": "PCG-MAXICODE-TEST-005",
+    "expect": {
+      "format": "MaxiCode",
+      "kind": "Plain text"
+    },
+    "bytes": 14278
+  },
+  {
+    "file": "maxicode-ups.png",
+    "title": "MaxiCode — UPS structured carrier message",
+    "text": "[)>\u001e01\u001d841706672\u001d840\u001d001\u001d1Z12345675\u001dUPSN\u001d123456\u001d089\u001dSHP99\u001d1/1\u001d25.5\u001dY\u001d634 ALPHA DR\u001dPITTSBURGH\u001dPA\u001e\u0004",
+    "expect": {
+      "format": "MaxiCode",
+      "kind": "MaxiCode structured carrier message",
+      "fields": {
+        "Country code": "840 — United States",
+        "Ship-to city": "PITTSBURGH"
+      }
+    },
+    "bytes": 16508
+  },
+  {
+    "file": "gs1-datamatrix.png",
+    "title": "GS1 Data Matrix — GTIN / expiry / lot / serial",
+    "text": "01006141419999961726123110LOT1234A\u001d21SN7890",
+    "encoderInput": "(01)00614141999996(17)261231(10)LOT1234A(21)SN7890",
+    "expect": {
+      "format": "DataMatrix",
+      "kind": "GS1 element string",
+      "fields": {
+        "GTIN": "00614141999996",
+        "Expiration date": "2026-12-31"
+      }
+    },
+    "bytes": 4035
+  },
+  {
+    "file": "aamva-pdf417.png",
+    "title": "PDF417 — AAMVA driver's licence",
+    "text": "@\n\u001e\rANSI 636000100102DL00410288ZV03330015DLDAQT64235789\nDCSSAMPLE\nDACMICHAEL\nDBB01311977\nDBA01312029\nDBC1\nDAU069 IN\nDAYBRO\nDAJVA\nDCGUSA\r\u001e",
+    "expect": {
+      "format": "PDF417",
+      "kind": "AAMVA driver's licence / ID",
+      "fields": {
+        "Family name": "SAMPLE",
+        "Height": "5' 9\" (69 in)"
+      }
+    },
+    "bytes": 7764
+  }
+]

@@ -1,0 +1,10 @@
+# Normalise text to LF inside the repository. Without this, committing from
+# Windows stores CRLF and every checkout on another machine shows phantom
+# whole-file diffs.
+* text=auto eol=lf
+
+# Binary assets must never be line-ending converted -- doing so corrupts them.
+*.png   binary
+*.wasm  binary
+*.ico   binary
+*.woff2 binary
