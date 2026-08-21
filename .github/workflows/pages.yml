@@ -1,0 +1,56 @@
+# Publishes the app/ directory to GitHub Pages.
+#
+# GitHub Pages can only serve from the repository root or /docs, but the
+# deployable artifact is app/. Uploading app/ as the Pages artifact keeps the
+# repository layout intact and still serves the app from the site root.
+#
+# There is no build step: the app is plain static files, and the vendored WASM
+# and icons are committed. `npm test` runs as a gate so a parser regression
+# cannot reach the published app.
+
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Let an in-progress deploy finish rather than cancelling it, so the live site
+# is never left half-updated.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci
+      - name: Parser test suite
+        run: npm test
+      - name: Encode/decode round trip for all five formats
+        run: npm run verify
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: app
+      - id: deployment
+        uses: actions/deploy-pages@v4

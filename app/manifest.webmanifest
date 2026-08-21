@@ -2,7 +2,7 @@
   "name": "PCG Scan — Peterson Corn Genetics",
   "short_name": "PCG Scan",
   "description": "Barcode scanner for PDF417, Data Matrix, QR Code, MaxiCode and Aztec symbols. Decoding happens entirely on the device.",
-  "id": "/pcg-scan/",
+  "id": "./",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
