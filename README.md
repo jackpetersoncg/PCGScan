@@ -5,6 +5,16 @@ A branded, installable barcode scanner for iOS and Android that reads
 App: one static site, installed to the home screen, no app stores and no
 developer accounts. All decoding happens on the device — nothing is uploaded.
 
+## → **[Open the app](https://jackpetersoncg.github.io/PCGScan/)**
+
+On a phone, open that link and choose **Share → Add to Home Screen** (iOS) or
+**⋮ → Add to Home screen** (Android) to install it.
+
+Before trusting a device in the field, open
+**[the self test](https://jackpetersoncg.github.io/PCGScan/dev/selftest.html)**
+on it — it decodes a known symbol of all five formats and reports what that
+particular phone can actually read.
+
 ---
 
 ## Why a PWA, and why this decoder
@@ -72,17 +82,17 @@ the WASM binary into `app/vendor/`.
 
 ## Testing on a phone
 
-The camera requires a **secure context**. `localhost` qualifies; a LAN address
-over plain HTTP does not, and iOS is strict about this. Options:
+Easiest path: open the [deployed app](https://jackpetersoncg.github.io/PCGScan/)
+— it is already on HTTPS, so nothing needs setting up.
+
+To test *uncommitted local changes* on a phone, note that the camera requires a
+**secure context**. `localhost` qualifies; a LAN address over plain HTTP does
+not, and iOS is strict about this. Options:
 
 - **Android**: `chrome://inspect` port forwarding lets the phone reach
   `localhost:8080` directly as a secure origin.
 - **Either platform**: an HTTPS tunnel — `npx localtunnel --port 8080`,
   `cloudflared tunnel --url http://localhost:8080`, or ngrok.
-- **Or just deploy it.** It is a static site; see below.
-
-Once loaded over HTTPS, install it: **Share → Add to Home Screen** on iOS,
-or the install prompt / **⋮ → Add to Home screen** on Android.
 
 ### Device self test
 
@@ -99,18 +109,30 @@ before deploying if you would rather not ship it.
 
 ## Deploying
 
-`app/` is the entire deployable artifact — plain static files, no server-side
-anything. It needs HTTPS and correct MIME types for `.wasm`
-(`application/wasm`) and `.webmanifest` (`application/manifest+json`).
+Deployment is automatic. Pushing to `main` runs
+[`.github/workflows/pages.yml`](.github/workflows/pages.yml), which gates on the
+test suites and then publishes to GitHub Pages at
+<https://jackpetersoncg.github.io/PCGScan/>.
 
-Given PCG runs on Microsoft 365, **Azure Static Web Apps** is the natural home
-and has a free tier. Cloudflare Pages and Netlify work identically. A plain
-IIS site works too, but IIS does not know the `.wasm` MIME type by default —
-you have to add it, or the decoder will refuse to load.
+GitHub Pages can only serve from the repository root or `/docs`, but the
+deployable artifact is `app/`. The workflow therefore uploads `app/` as the
+Pages artifact, which serves it from the site root without restructuring the
+repository. Pages already serves `.wasm` as `application/wasm` and
+`.webmanifest` as `application/manifest+json`, both verified live.
 
 **On every deploy, bump `CACHE` in [`app/sw.js`](app/sw.js).** The service
 worker serves the app shell cache-first, so without a version bump installed
-clients keep running the old code indefinitely.
+clients keep running the old code indefinitely. This is the single easiest
+thing to forget and the most confusing to debug.
+
+### Hosting it elsewhere
+
+`app/` is the entire deployable artifact — plain static files, no server-side
+anything. It needs only HTTPS and the two MIME types above. **Azure Static Web
+Apps** is a natural fit alongside PCG's Microsoft 365 tenancy if this ever needs
+to move somewhere private; Cloudflare Pages and Netlify work identically. A
+plain IIS site works too, but IIS does not know the `.wasm` MIME type by
+default — you have to add it, or the decoder will refuse to load.
 
 ---
 
