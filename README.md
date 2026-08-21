@@ -94,6 +94,35 @@ not, and iOS is strict about this. Options:
 - **Either platform**: an HTTPS tunnel — `npx localtunnel --port 8080`,
   `cloudflared tunnel --url http://localhost:8080`, or ngrok.
 
+### Theming
+
+The app follows the phone's light/dark setting automatically via
+`prefers-color-scheme` — there is no in-app toggle. Every colour in
+[`app/css/app.css`](app/css/app.css) is a semantic token (`--text`, `--accent`,
+`--warn-bg`); the brand hexes are raw ingredients that only the token layer
+consumes. To retheme, change the tokens, not the rules.
+
+**The viewfinder is deliberately exempt.** `--stage-*` and `--scrim` stay dark
+in both themes, because that surface is live camera video rather than UI: a
+bright scrim reflects off glossy labels, and the guide overlay has to stay
+legible against whatever the camera sees. Both platforms' camera apps do the
+same.
+
+Contrast is verified, not eyeballed. After changing any token, run the audit in
+**both** schemes:
+
+```js
+const { audit } = await import('./dev/contrast-audit.js'); await audit();
+```
+
+It measures the *rendered* ratio of every themed component against its
+effective background and prints a pass/fail table. All 20 components currently
+pass WCAG AA in both schemes. Worth knowing: the warm grays straight off the
+brand sheet (Warm Gray 8 `#8D827A`) fail at 4.05:1 on white, and PCG orange
+fails badly as text at 2.4:1 — which is why muted text is darkened from the
+brand value and light-mode warnings use dark text on a pale orange tint,
+keeping orange for the border and icon only.
+
 ### Device self test
 
 Open **`/dev/selftest.html`** on any device to decode a known symbol of every
@@ -221,6 +250,13 @@ and decoded links are never auto-navigated.
 - **Brand fonts need the network.** Prompt and Montserrat load from Google
   Fonts, so offline use falls back to the system stack. Self-host WOFF2 files if
   brand-exact type offline matters.
+- **The install splash screen is always dark.** A web manifest has no
+  per-scheme form of `background_color`, so light-mode users get a brief dark
+  splash before the app paints. Dark was chosen over white because the green
+  icon reads better on it, and a white flash at night is more jarring than a
+  dark one in daylight. iOS's `apple-mobile-web-app-status-bar-style` has the
+  same limitation, which is why it is set to `default` and the status bar is
+  tinted from the two `theme-color` tags instead.
 - **The GS1 AI table is a working subset**, covering trade and logistics
   identifiers rather than all ~450 AIs. Unrecognised AIs are reported as such,
   not silently dropped. Extend the table in `gs1.js`.

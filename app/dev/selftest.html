@@ -17,8 +17,12 @@
         border-left: 3px solid var(--pcg-blue);
         font-weight: 600;
       }
-      .summary.pass { border-left-color: var(--pcg-green); color: var(--pcg-green-light); }
-      .summary.fail { border-left-color: var(--danger); color: #ffd9d4; }
+      .summary.pass { border-left-color: var(--pcg-green); color: var(--accent-strong); }
+      .summary.fail {
+        border-left-color: var(--danger);
+        background: var(--danger-bg);
+        color: var(--danger-text);
+      }
       .case {
         display: grid;
         grid-template-columns: 92px 1fr;
@@ -27,6 +31,8 @@
         padding: 0.8rem 0;
         border-top: 1px solid var(--border);
       }
+      /* The white ground is intentional and theme-independent: these are
+         barcodes, and a dark backing would make them undecodable. */
       .case img {
         width: 92px;
         background: #fff;

@@ -10,10 +10,26 @@
     />
 
     <link rel="manifest" href="./manifest.webmanifest" />
-    <meta name="theme-color" content="#028345" />
+
+    <!--
+      The app follows the system colour scheme (see css/app.css). These two
+      theme-color tags let the browser/OS chrome follow it as well; a single
+      tag would leave one theme with a mismatched status bar. `color-scheme`
+      keeps native form controls and scrollbars in step before CSS loads.
+    -->
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0b120e" media="(prefers-color-scheme: dark)" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <!--
+      Not "black-translucent": despite the name it forces WHITE status-bar text,
+      which was fine when this app was dark-only but is unreadable over a light
+      background. There is no media-query form of this tag, so "default" plus the
+      theme-color tags above is the workable combination — iOS 15+ tints the
+      status bar from theme-color and picks readable text itself.
+    -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="PCG Scan" />
     <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png" />
     <link rel="icon" href="./icons/icon-192.png" sizes="192x192" />
