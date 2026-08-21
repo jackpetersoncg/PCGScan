@@ -34,8 +34,9 @@ with no native build, no Xcode and no Mac.
 
 ### The MaxiCode caveat, stated plainly
 
-MaxiCode is verified working (see [Testing](#testing)), but it is the weakest of
-the five in ZXing-C++. It is `read`-only in the library — there is no encoder —
+MaxiCode is verified working (see
+[Device self test](#device-self-test)), but it is the weakest of the five in
+ZXing-C++. It is `read`-only in the library — there is no encoder —
 and its detector wants a reasonably square-on, evenly lit, in-focus symbol. QR
 and Data Matrix tolerate far more angle, blur and glare.
 
@@ -71,12 +72,26 @@ the camera works without HTTPS during development.
 | Command | What it does |
 | --- | --- |
 | `npm start` | Static dev server on port 8080 with correct `.wasm` MIME types |
-| `npm run build` | Regenerates vendored WASM, icons and test fixtures |
+| `npm run build` | All three generate steps below |
 | `npm test` | Parser (29 cases) and CSV export (43 cases) suites, pure Node |
 | `npm run verify` | Encodes a symbol of each format and round-trips it through the decoder |
 
+Individually, when iterating:
+
+| Command | What it does |
+| --- | --- |
+| `npm run test:parsers` | Parser suite only — [`scripts/test-parsers.mjs`](scripts/test-parsers.mjs) |
+| `npm run test:csv` | CSV export suite only — [`scripts/test-history.mjs`](scripts/test-history.mjs) |
+| `npm run build:vendor` | Copies the ZXing WASM + JS into `app/vendor/` |
+| `npm run build:icons` | Renders the app icons from an inline SVG |
+| `npm run build:fixtures` | Regenerates the self-test barcodes and their manifest |
+
 `npm run build` must be run at least once before the app will load — it copies
 the WASM binary into `app/vendor/`.
+
+Nothing in `scripts/` ships. `bwip-js` and `sharp` are devDependencies used only
+by the build and test tooling; the app itself has no runtime dependencies beyond
+the vendored WASM.
 
 ---
 
@@ -94,62 +109,17 @@ not, and iOS is strict about this. Options:
 - **Either platform**: an HTTPS tunnel — `npx localtunnel --port 8080`,
   `cloudflared tunnel --url http://localhost:8080`, or ngrok.
 
-### Theming
+### Diagnostics (the Stats button)
 
-A **Theme** row in the app offers *Auto / Light / Dark*. Auto follows the
-phone's setting and tracks changes to it live; an explicit choice overrides the
-phone in both directions and persists in `localStorage`. The override exists
-because the right theme outdoors is a lighting question, not a system-settings
-question — direct sun favours light regardless of what the phone says.
+**Stats** in the top bar overlays a panel on the viewfinder showing the live
+scan rate and decode time per frame, plus the sensor resolution, format count
+and whether the device exposed a torch. It is the tool for answering "why is
+this phone slow to read labels" in the field — a low frame rate points at
+resolution or lighting, a high per-frame time at the decoder having to work.
 
-Every colour in [`app/css/app.css`](app/css/app.css) is a semantic token
-(`--text`, `--accent`, `--warn-bg`); the brand hexes are raw ingredients that
-only the token layer consumes. To retheme, change the tokens, not the rules.
-
-The theme is keyed off `<html data-theme>`, set to a concrete `light` or `dark`.
-It is deliberately **not** a `prefers-color-scheme` media query: supporting an
-explicit override through a media query needs the dark palette written twice
-(once for `@media dark`, again for `[data-theme="dark"]`), and two copies of a
-palette drift apart. Resolving the system preference in JS keeps one definition
-per token.
-
-That resolution happens in two places, which is intentional:
-
-- [`js/theme-init.js`](app/js/theme-init.js) — a *classic* script in `<head>`,
-  so it runs before first paint and nobody sees a flash of the wrong theme.
-  Module scripts are deferred and would be too late. Shared with the self-test
-  page so that themes correctly too.
-- [`js/theme.js`](app/js/theme.js) — the module handling the switch,
-  persistence, and the `matchMedia` listener that keeps Auto current.
-
-Keep the storage key and the two `theme-color` values in step across both.
-The switch is initialised before the camera and engine guards in `app.js`, so it
-still works when the app cannot scan at all.
-
-**The viewfinder is deliberately exempt.** `--stage-*` and `--scrim` stay dark
-in both themes, because that surface is live camera video rather than UI: a
-bright scrim reflects off glossy labels, and the guide overlay has to stay
-legible against whatever the camera sees. Both platforms' camera apps do the
-same.
-
-Contrast is verified, not eyeballed. After changing any token, run the audit in
-**both** schemes:
-
-```js
-const { auditBoth } = await import('./dev/contrast-audit.js'); await auditBoth();
-```
-
-It measures the *rendered* ratio of every themed component against its
-effective background and prints a pass/fail table for both palettes, driving
-`data-theme` itself so you do not have to touch the OS setting. All 30
-components currently pass WCAG AA in both. It clicks the Stats toggle and needs
-at least one saved scan, so the diagnostics panel and history rows exist to be
-measured rather than reported absent.
-
-Worth knowing: the warm grays straight off the brand sheet (Warm Gray 8 `#8D827A`) fail at 4.05:1 on white, and PCG orange
-fails badly as text at 2.4:1 — which is why muted text is darkened from the
-brand value and light-mode warnings use dark text on a pale orange tint,
-keeping orange for the border and icon only.
+The rate figures only exist while the frame loop is running. The panel shows the
+static facts immediately and appends the rate once there is one, rather than
+rendering blank while the camera is idle.
 
 ### Device self test
 
@@ -261,7 +231,7 @@ The parsers live in [`app/js/parsers/`](app/js/parsers/):
 | `gs1.js` | GS1 application identifiers | AI length table (fixed vs variable), implied decimal points, `YYMMDD` dates with the GS1 century window, `DD=00` end-of-month, ISO 3166 country names. Accepts both the raw FNC1 stream and the `(01)…` human-readable form. |
 | `aamva.js` | Driver's licences / ID cards (PDF417) | Recovers elements by scanning rather than trusting the header's declared offsets, because real cards get them wrong. US `MMDDCCYY` vs Canadian `CCYYMMDD` dates, height/sex/eye-colour code expansion, expiry warning. |
 | `iso15434.js` | MaxiCode + industrial `[)>` envelopes | Format-ID dispatch (`01` transportation, `05` delegates to GS1, `14`/`20` text). See below. |
-| `generic.js` | URLs, Wi-Fi, vCard, calendar, `mailto:`/`tel:`/`geo:` | Flags punycode homograph hosts, plain HTTP, bare-IP hosts and embedded credentials. Never auto-navigates. Refuses to display `otpauth:` secrets. |
+| `generic.js` | URLs, Wi-Fi, vCard, calendar, `mailto:`/`tel:`/`geo:` | Flags punycode homograph hosts, plain HTTP, bare-IP hosts and embedded credentials. Never auto-navigates. Refuses to display `otpauth:` secrets, which are also never written to history. |
 
 Dispatch uses ZXing's own `contentType` (`GS1`, `ISO15434`) where available,
 which is more reliable than sniffing the text.
@@ -278,6 +248,73 @@ unlabelled with their positions instead. Labels it does apply from carrier
 convention rather than from the data are marked *inferred* in the UI.
 
 On a shipping document, a confidently wrong label is worse than no label.
+
+---
+
+## Theming
+
+A **Theme** row in the app offers *Auto / Light / Dark*. Auto follows the
+phone's setting and tracks changes to it live; an explicit choice overrides the
+phone in both directions and persists in `localStorage`. The override exists
+because the right theme outdoors is a lighting question, not a system-settings
+question — direct sun favours light regardless of what the phone says.
+
+Every colour in [`app/css/app.css`](app/css/app.css) is a semantic token
+(`--text`, `--accent`, `--warn-bg`); the brand hexes are raw ingredients that
+only the token layer consumes. To retheme, change the tokens, not the rules.
+
+Sizing has one token worth knowing about: `--control-height` is 44px, the tap
+target both platform guidelines ask for, and every interactive row in the tuning
+block and history list is pinned to it. That matters more than usual here
+because the app gets used outdoors, sometimes with gloves on — WCAG's 24px floor
+is not enough in a field tool. Keep new controls on the same token so the rows
+stay even.
+
+The theme is keyed off `<html data-theme>`, set to a concrete `light` or `dark`.
+It is deliberately **not** a `prefers-color-scheme` media query: supporting an
+explicit override through a media query needs the dark palette written twice
+(once for `@media dark`, again for `[data-theme="dark"]`), and two copies of a
+palette drift apart. Resolving the system preference in JS keeps one definition
+per token.
+
+That resolution happens in two places, which is intentional:
+
+- [`js/theme-init.js`](app/js/theme-init.js) — a *classic* script in `<head>`,
+  so it runs before first paint and nobody sees a flash of the wrong theme.
+  Module scripts are deferred and would be too late. Shared with the self-test
+  page so that themes correctly too.
+- [`js/theme.js`](app/js/theme.js) — the module handling the switch,
+  persistence, and the `matchMedia` listener that keeps Auto current.
+
+Keep the storage key and the two `theme-color` values in step across both.
+The switch is initialised before the camera and engine guards in `app.js`, so it
+still works when the app cannot scan at all.
+
+**The viewfinder is deliberately exempt.** `--stage-*` and `--scrim` stay dark
+in both themes, because that surface is live camera video rather than UI: a
+bright scrim reflects off glossy labels, and the guide overlay has to stay
+legible against whatever the camera sees. Both platforms' camera apps do the
+same.
+
+Contrast is verified, not eyeballed. After changing any token, run the audit in
+**both** schemes:
+
+```js
+const { auditBoth } = await import('./dev/contrast-audit.js'); await auditBoth();
+```
+
+It measures the *rendered* ratio of every themed component against its
+effective background and prints a pass/fail table for both palettes, driving
+`data-theme` itself so you do not have to touch the OS setting. All 30
+components currently pass WCAG AA in both. It clicks the Stats toggle and needs
+at least one saved scan, so the diagnostics panel and history rows exist to be
+measured rather than reported absent.
+
+Worth knowing: the warm grays straight off the brand sheet (Warm Gray 8
+`#8D827A`) fail at 4.05:1 on white, and PCG orange fails badly as text at
+2.4:1 — which is why muted text is darkened from the brand value, and
+light-mode warnings use dark text on a pale orange tint, keeping orange for the
+border and icon only.
 
 ---
 
@@ -300,11 +337,14 @@ app/                      ← the entire deployable artifact
 │   └── parsers/
 ├── vendor/zxing-wasm/    ← generated by `npm run build:vendor`
 ├── icons/                ← generated by `npm run build:icons`
-└── dev/                  ← device self test; safe to delete
+└── dev/                  ← diagnostics; safe to delete
+    ├── selftest.html     ← decodes all five formats on this device
+    ├── contrast-audit.js ← measures rendered contrast in both themes
+    └── fixtures/         ← generated by `npm run build:fixtures`
 scripts/                  ← build + test tooling (never shipped)
 ```
 
-Three things here are load-bearing and easy to break:
+Four things here are load-bearing and easy to break:
 
 1. **`textMode: "Plain"`** in `decode.js`. The library's default renders control
    characters as printable escapes like `<GS>`, which destroys the byte
@@ -321,9 +361,18 @@ Three things here are load-bearing and easy to break:
    area that is not the box the user is aiming with — which reads as "the
    scanner is just bad". Change them together.
 
-Barcode content is untrusted input: a QR code containing markup is trivial to
-produce. `render.js` therefore builds DOM nodes and assigns via `textContent`,
-and decoded links are never auto-navigated.
+4. **`escapeCell()` in `history.js`** does two jobs, and the second is not
+   obvious: as well as RFC 4180 quoting it prefixes `=`, `+`, `-` and `@` to
+   stop spreadsheets executing a scanned payload as a formula. A refactor that
+   "simplifies" it to plain quoting reintroduces a live code-execution path into
+   every exported file. The tests in
+   [`scripts/test-history.mjs`](scripts/test-history.mjs) will fail if it goes.
+
+Barcode content is untrusted input throughout: a QR code containing markup, or a
+payload starting `=HYPERLINK(...)`, is trivial to produce. So `render.js` builds
+DOM nodes and assigns via `textContent`, decoded links are never auto-navigated,
+and the CSV layer neutralises formulas. Treat any new surface that displays or
+exports a payload the same way.
 
 ---
 
@@ -343,6 +392,15 @@ and decoded links are never auto-navigated.
   `apple-mobile-web-app-status-bar-style` has the same limitation, which is why
   it is set to `default` and the status bar is tinted from a `theme-color` tag
   that `theme.js` keeps current instead.
+- **History is capped at 500 scans** and lives in `localStorage`, so it is
+  per-device and per-browser: it does not sync, and clearing site data clears it.
+  Export before wiping anything. Move to IndexedDB if scans ever need to carry
+  images or run to thousands.
+- **The iOS share-sheet export path is unverified.** Desktop takes the download
+  fallback, which is tested; `navigator.share` with a file attachment could not
+  be exercised here. Worth confirming on a real iPhone the first time you export.
+- **No clipboard action.** Offered and not selected; a per-field copy button is a
+  small addition to `render.js` if it turns out to be wanted.
 - **The GS1 AI table is a working subset**, covering trade and logistics
   identifiers rather than all ~450 AIs. Unrecognised AIs are reported as such,
   not silently dropped. Extend the table in `gs1.js`.
