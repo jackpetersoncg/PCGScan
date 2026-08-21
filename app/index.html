@@ -170,6 +170,25 @@
       </div>
 
       <section id="results" class="results" aria-live="polite" hidden></section>
+
+      <section class="history" aria-labelledby="history-heading">
+        <header class="history-head">
+          <h2 id="history-heading">
+            History <span class="history-count" id="history-count">0</span>
+          </h2>
+          <div class="history-actions">
+            <button id="btn-export" class="btn btn-ghost" type="button" disabled>
+              Export CSV
+            </button>
+            <button id="btn-clear" class="btn btn-ghost" type="button" disabled>Clear</button>
+          </div>
+        </header>
+        <p class="history-note" id="history-note">
+          Scans are saved on this device only — nothing is uploaded. Clear the list
+          when you are finished if you have scanned ID documents.
+        </p>
+        <ol class="history-list" id="history-list"></ol>
+      </section>
     </main>
 
     <footer class="footer">

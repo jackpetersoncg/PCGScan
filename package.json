@@ -8,9 +8,11 @@
     "build:vendor": "node scripts/build-vendor.mjs",
     "build:icons": "node scripts/make-icons.mjs",
     "build:fixtures": "node scripts/make-fixtures.mjs",
-    "test": "node scripts/test-parsers.mjs",
+    "test": "node scripts/test-parsers.mjs && node scripts/test-history.mjs",
     "verify": "node scripts/verify-decode.mjs",
-    "start": "node scripts/serve.mjs"
+    "start": "node scripts/serve.mjs",
+    "test:parsers": "node scripts/test-parsers.mjs",
+    "test:csv": "node scripts/test-history.mjs"
   },
   "keywords": [],
   "author": "",

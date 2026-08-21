@@ -72,7 +72,7 @@ the camera works without HTTPS during development.
 | --- | --- |
 | `npm start` | Static dev server on port 8080 with correct `.wasm` MIME types |
 | `npm run build` | Regenerates vendored WASM, icons and test fixtures |
-| `npm test` | Parser test suite (29 cases, pure Node — no browser) |
+| `npm test` | Parser (29 cases) and CSV export (43 cases) suites, pure Node |
 | `npm run verify` | Encodes a symbol of each format and round-trips it through the decoder |
 
 `npm run build` must be run at least once before the app will load — it copies
@@ -141,9 +141,12 @@ const { auditBoth } = await import('./dev/contrast-audit.js'); await auditBoth()
 
 It measures the *rendered* ratio of every themed component against its
 effective background and prints a pass/fail table for both palettes, driving
-`data-theme` itself so you do not have to touch the OS setting. All 23
-components currently pass WCAG AA in both. Worth knowing: the warm grays straight off the
-brand sheet (Warm Gray 8 `#8D827A`) fail at 4.05:1 on white, and PCG orange
+`data-theme` itself so you do not have to touch the OS setting. All 30
+components currently pass WCAG AA in both. It clicks the Stats toggle and needs
+at least one saved scan, so the diagnostics panel and history rows exist to be
+measured rather than reported absent.
+
+Worth knowing: the warm grays straight off the brand sheet (Warm Gray 8 `#8D827A`) fail at 4.05:1 on white, and PCG orange
 fails badly as text at 2.4:1 — which is why muted text is darkened from the
 brand value and light-mode warnings use dark text on a pale orange tint,
 keeping orange for the border and icon only.
@@ -199,10 +202,57 @@ default — you have to add it, or the decoder will refuse to load.
 
 ## What it does with a scan
 
-Per the agreed scope, a decoded symbol is **parsed into labelled fields** and
-displayed. There is no scan history, no CSV export and no clipboard action —
-those were offered and not selected. Each is a small, self-contained addition
-if that changes.
+A decoded symbol is **parsed into labelled fields** and displayed, then saved to
+a local **history** which can be **exported as CSV**. (There is still no
+clipboard action; that was offered and not selected.)
+
+### History
+
+Stored in `localStorage`, newest first, capped at 500 entries. Only
+`{text, format, contentType}` plus a timestamp is persisted — the parsed view is
+re-derived on display and on export, so parser improvements apply retroactively
+to old scans and there is no second copy of the same data to keep in sync.
+
+Two deliberate behaviours:
+
+- **Authenticator secrets are never saved.** The parser already refuses to
+  display an `otpauth:` payload; writing it to `localStorage` in the clear would
+  undo that, so those scans are skipped and the user is told.
+- **History can hold personal data.** An AAMVA scan means a name, date of birth
+  and address sitting on the device. The UI says so and offers **Clear**; the
+  data never leaves the phone.
+
+Tapping a history row re-renders that scan's full parsed card.
+
+### CSV export
+
+Every parsed field label seen across the export becomes its own column, so a
+batch of GS1 scans yields real `GTIN` / `Batch / lot number` / `Expiration date`
+columns rather than one opaque blob. Mixed batches are correspondingly sparse,
+which is the honest representation of mixed data. Fixed columns come first
+(timestamps in both local and UTC), with the raw payload and any parser warnings
+last.
+
+Four things the CSV layer gets right, all covered by
+[`scripts/test-history.mjs`](scripts/test-history.mjs) (43 cases) because each
+fails silently rather than loudly:
+
+- **Formula injection.** A payload beginning `=`, `+`, `-` or `@` executes as a
+  formula when the file opens in Excel or Sheets. Barcode contents are untrusted
+  input, so those cells are prefixed with an apostrophe to force text.
+- **RFC 4180 quoting.** An unescaped quote shifts every later column.
+- **Control characters** become named tokens (`<GS>`, `<RS>`). Raw `0x1D` bytes
+  corrupt the file for most readers, and newlines are tokenised too so no cell
+  ever spans lines — AAMVA payloads are full of both.
+- **Unique headers.** The ISO 15434 parser emits a field called `Format`, which
+  collided with the symbology column; that column is now `Symbology`, and any
+  remaining collision is suffixed rather than duplicated.
+
+Export prefers the **share sheet** (`navigator.share`) where available, because
+on iOS that is markedly more reliable from an installed PWA than a download and
+puts the file straight into Mail or Files. Elsewhere it falls back to a download
+link. A UTF-8 BOM is prepended so Excel reads the encoding correctly instead of
+mangling the em dashes in country names.
 
 The parsers live in [`app/js/parsers/`](app/js/parsers/):
 
@@ -244,6 +294,9 @@ app/                      ← the entire deployable artifact
 │   ├── scanner.js        ← camera, frame loop, guide → sensor mapping
 │   ├── decode.js         ← the only file that knows about ZXing
 │   ├── render.js         ← builds DOM nodes, never innerHTML
+│   ├── history.js        ← scan history + CSV export
+│   ├── theme.js          ← theme switch, persistence, system tracking
+│   ├── theme-init.js     ← classic script; applies theme before first paint
 │   └── parsers/
 ├── vendor/zxing-wasm/    ← generated by `npm run build:vendor`
 ├── icons/                ← generated by `npm run build:icons`

@@ -37,6 +37,13 @@ const TARGETS = [
   ["row label", ".row-label"],
   ["theme seg (idle)", ".segmented input:not(:checked) + label"],
   ["theme seg (active)", ".segmented input:checked + label"],
+  ["history heading", "#history-heading"],
+  ["history count", ".history-count"],
+  ["history note", ".history-note"],
+  ["history time", ".history-time"],
+  ["history format", ".history-format"],
+  ["history summary", ".history-summary"],
+  ["diagnostics", ".diagnostics"],
 ];
 
 const channel = (c) => {
@@ -87,6 +94,13 @@ export async function seed() {
 
   document.querySelector(".raw")?.setAttribute("open", "");
   document.querySelector(".btn-ghost")?.classList.add("is-on");
+
+  // The diagnostics panel and history rows only exist in certain states.
+  const diagToggle = document.getElementById("btn-diag");
+  if (document.getElementById("diagnostics")?.hidden) diagToggle?.click();
+  if (!document.querySelector(".history-row")) {
+    throw new Error("history is empty; scan something before auditing history rows");
+  }
 
   const result = document.querySelector(".result");
   if (!result) throw new Error("no result card rendered; cannot audit");

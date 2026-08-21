@@ -5,6 +5,8 @@ import { warmUp, decodeStill } from "./decode.js";
 import { parse } from "./parsers/index.js";
 import { renderResult, renderMultiple } from "./render.js";
 import { initTheme } from "./theme.js";
+import * as history from "./history.js";
+import { FORMATS, formatLabel } from "./decode.js";
 
 const $ = (id) => document.getElementById(id);
 
@@ -26,6 +28,11 @@ const ui = {
   diag: $("diagnostics"),
   diagToggle: $("btn-diag"),
   theme: document.querySelector(".segmented[role='radiogroup']"),
+  historyList: $("history-list"),
+  historyCount: $("history-count"),
+  historyNote: $("history-note"),
+  export: $("btn-export"),
+  clear: $("btn-clear"),
 };
 
 let scanner = null;
@@ -120,15 +127,43 @@ function onResult(result) {
   scanner.pause();
   const parsed = parse(result);
   showResult(renderResult(result, parsed));
-  setStatus(null);
+  const record = history.add(result);
+  renderHistory();
+  setStatus(record.skipped ?? null, record.skipped ? "info" : "info");
   if (navigator.vibrate) navigator.vibrate(40);
 }
 
-function onStats(stats) {
+// ------------------------------------------------------------ diagnostics ---
+
+/**
+ * The live scan rate only exists while the frame loop is running, so on its own
+ * it leaves the panel blank whenever the camera is idle — which reads as a
+ * broken button. Static facts are always available, so they are shown
+ * immediately and the rate line is appended once it exists.
+ */
+function renderDiagnostics(stats) {
   if (!diagVisible) return;
-  ui.diag.textContent =
-    `${stats.fps.toFixed(1)} scans/s · ${stats.avgDecodeMs.toFixed(0)} ms per frame` +
-    (stats.resolution ? ` · sensor ${stats.resolution}` : "");
+  const lines = [];
+  if (stats) {
+    lines.push(
+      `${stats.fps.toFixed(1)} scans/s · ${stats.avgDecodeMs.toFixed(0)} ms/frame`,
+    );
+  } else if (scanner?.isRunning) {
+    lines.push("measuring scan rate…");
+  } else {
+    lines.push("idle — start scanning for rates");
+  }
+
+  const caps = scanner?.capabilities ?? {};
+  if (caps.resolution) lines.push(`sensor ${caps.resolution}`);
+  lines.push(`${FORMATS.length} formats · zxing-wasm`);
+  if (caps.torch) lines.push("torch available");
+
+  ui.diag.textContent = lines.join("\n");
+}
+
+function onStats(stats) {
+  renderDiagnostics(stats);
 }
 
 function onError(err) {
@@ -153,6 +188,9 @@ async function scanStill(file) {
       return;
     }
     showResult(renderMultiple(results.map((result) => ({ result, parsed: parse(result) }))));
+    // A photo can carry several symbols; each is its own scan event.
+    for (const result of results) history.add(result);
+    renderHistory();
     setStatus(null);
   } catch (err) {
     setStatus(`Could not read that image: ${err.message}`, "error");
@@ -160,6 +198,119 @@ async function scanStill(file) {
     ui.photo.disabled = false;
     ui.file.value = "";
   }
+}
+
+// ---------------------------------------------------------------- history ---
+
+function timeLabel(iso) {
+  const d = new Date(iso);
+  const today = new Date();
+  const sameDay =
+    d.getFullYear() === today.getFullYear() &&
+    d.getMonth() === today.getMonth() &&
+    d.getDate() === today.getDate();
+  const p = (n) => String(n).padStart(2, "0");
+  const time = `${p(d.getHours())}:${p(d.getMinutes())}`;
+  // Older entries need the date; today's would just be noise.
+  return sameDay ? time : `${p(d.getDate())}/${p(d.getMonth() + 1)} ${time}`;
+}
+
+function renderHistory() {
+  const entries = history.all();
+  ui.historyCount.textContent = String(entries.length);
+  ui.export.disabled = entries.length === 0;
+  ui.clear.disabled = entries.length === 0;
+  ui.historyNote.hidden = entries.length > 0;
+
+  const list = document.createDocumentFragment();
+  for (const entry of entries) {
+    const parsed = history.parseEntry(entry);
+
+    const row = document.createElement("button");
+    row.type = "button";
+    row.className = "history-row";
+    row.dataset.id = entry.id;
+
+    const time = document.createElement("span");
+    time.className = "history-time";
+    time.textContent = timeLabel(entry.at);
+
+    const format = document.createElement("span");
+    format.className = "history-format";
+    format.textContent = formatLabel(entry.format);
+
+    const summary = document.createElement("span");
+    summary.className = "history-summary";
+    // summarise() strips control characters; textContent covers the rest.
+    summary.textContent = history.summarise(entry, parsed);
+
+    row.append(time, format, summary);
+    row.addEventListener("click", () => viewHistoryEntry(entry));
+
+    const li = document.createElement("li");
+    li.append(row);
+    list.append(li);
+  }
+  ui.historyList.replaceChildren(list);
+}
+
+function viewHistoryEntry(entry) {
+  scanner?.pause();
+  const parsed = history.parseEntry(entry);
+  // The stored record carries everything renderResult reads except the decode
+  // metadata, which was never persisted; supply neutral values for those.
+  const result = {
+    text: entry.text,
+    format: entry.format,
+    contentType: entry.contentType,
+    bytes: new TextEncoder().encode(entry.text),
+    symbologyIdentifier: "",
+    orientation: 0,
+    isMirrored: false,
+    isInverted: false,
+    sequenceSize: -1,
+    sequenceIndex: -1,
+  };
+
+  const card = renderResult(result, parsed);
+  const source = document.createElement("p");
+  source.className = "result-source";
+  source.textContent = `From history — scanned ${new Date(entry.at).toLocaleString()}`;
+  card.prepend(source);
+
+  showResult(card);
+  for (const row of ui.historyList.querySelectorAll(".history-row")) {
+    row.classList.toggle("is-viewing", row.dataset.id === entry.id);
+  }
+}
+
+async function exportHistory() {
+  ui.export.disabled = true;
+  try {
+    const how = await history.exportCSV();
+    setStatus(
+      how === "shared"
+        ? "CSV handed to the share sheet."
+        : "CSV downloaded to your device.",
+    );
+  } catch (err) {
+    setStatus(`Could not export: ${err.message}`, "error");
+  } finally {
+    ui.export.disabled = history.count() === 0;
+  }
+}
+
+function clearHistory() {
+  const n = history.count();
+  if (!n) return;
+  // Irreversible and the data exists nowhere else, so confirm explicitly.
+  if (!window.confirm(`Delete all ${n} saved scan${n === 1 ? "" : "s"}? This cannot be undone.`)) {
+    return;
+  }
+  history.clear();
+  renderHistory();
+  clearResult();
+  setStatus("History cleared.");
 }
 
 // ----------------------------------------------------------------- startup ---
@@ -197,8 +348,12 @@ function wireControls() {
     diagVisible = !diagVisible;
     ui.diag.hidden = !diagVisible;
     ui.diagToggle.setAttribute("aria-pressed", String(diagVisible));
-    if (!diagVisible) ui.diag.textContent = "";
+    if (diagVisible) renderDiagnostics(null);
+    else ui.diag.textContent = "";
   });
+
+  // Export and Clear are wired in main(), ahead of the camera guards, so they
+  // keep working on a device that cannot scan. Not repeated here.
 
   // Releasing the camera when backgrounded avoids the "camera in use" state
   // some Android builds get stuck in, and stops draining the battery.
@@ -213,6 +368,12 @@ async function main() {
   // app cannot scan (insecure context, engine failed to load), or the user is
   // stuck with an error message they may not be able to read comfortably.
   initTheme(ui.theme);
+
+  // Also before the guards: past scans and their export stay reachable even if
+  // the camera cannot start on this device.
+  renderHistory();
+  ui.export.addEventListener("click", exportHistory);
+  ui.clear.addEventListener("click", clearHistory);
 
   if (!window.isSecureContext) {
     setStatus(

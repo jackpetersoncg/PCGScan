@@ -236,7 +236,10 @@ main {
 }
 
 .icon-btn[aria-pressed="true"] {
-  color: var(--accent);
+  /* --accent (mid green) lands at 4.48:1 on the light page background — a hair
+     under AA. --accent-strong is the darker green in light mode and the light
+     tint in dark mode, so both directions clear it comfortably. */
+  color: var(--accent-strong);
   border-color: var(--pcg-green);
 }
 
@@ -343,6 +346,11 @@ main {
   color: var(--stage-accent);
   font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
   font-size: 0.7rem;
+  /* app.js joins the diagnostic lines with "\n"; the default would collapse
+     those to spaces and run everything together. */
+  white-space: pre-line;
+  line-height: 1.5;
+  max-width: calc(100% - 1rem);
 }
 
 /* ---------------------------------------------------------------- status -- */
@@ -708,6 +716,129 @@ main {
   color: var(--ctrl-fg);
   font-size: 0.66rem;
   vertical-align: 1px;
+}
+
+/* --------------------------------------------------------------- history -- */
+
+.history {
+  margin-top: 1.6rem;
+  border-top: 1px solid var(--border);
+  padding-top: 0.9rem;
+}
+
+.history-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.history-head h2 {
+  margin: 0;
+  font-family: var(--font-head);
+  font-size: 0.95rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.history-count {
+  min-width: 1.6rem;
+  padding: 0.1rem 0.4rem;
+  border-radius: 999px;
+  background: var(--badge-bg);
+  border: 1px solid var(--badge-border);
+  color: var(--badge-text);
+  font-family: var(--font-body);
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+.history-actions {
+  display: flex;
+  gap: 0.4rem;
+}
+
+/* Narrower than the main action buttons: these are secondary, and the row has
+   to survive a 320px screen alongside the heading. */
+.history-actions .btn {
+  min-height: 38px;
+  padding: 0.45rem 0.7rem;
+  font-size: 0.78rem;
+}
+
+.history-note {
+  margin: 0.55rem 0 0;
+  font-size: 0.72rem;
+  line-height: 1.5;
+  color: var(--text-faint);
+}
+
+.history-list {
+  list-style: none;
+  margin: 0.7rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.history-row {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.15rem 0.6rem;
+  width: 100%;
+  min-height: var(--control-height);
+  padding: 0.5rem 0.65rem;
+  text-align: left;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  font-family: var(--font-body);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.history-row:hover {
+  border-color: var(--pcg-green);
+}
+
+.history-time {
+  font-size: 0.7rem;
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.history-format {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--accent);
+  white-space: nowrap;
+}
+
+.history-summary {
+  grid-column: 1 / -1;
+  font-size: 0.82rem;
+  overflow-wrap: anywhere;
+  /* Two lines is enough to identify a scan without the list becoming a wall. */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.history-row.is-viewing {
+  border-color: var(--pcg-green);
+  background: var(--badge-bg);
+}
+
+.result-source {
+  margin: 0 0 0.7rem;
+  font-size: 0.74rem;
+  color: var(--text-faint);
 }
 
 /* ---------------------------------------------------------------- footer -- */
